@@ -1,0 +1,1279 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Lexy × Soch — AI Automation Proposal</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,600;0,700;1,400;1,600&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+<style>
+/* ── Reset & Tokens ─────────────────────────────────────────── */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+:root {
+  --coal:        #111118;
+  --charcoal:    #2C2C2C;
+  --coral:       #EA6A47;
+  --coral-light: #F0927A;
+  --coral-pale:  rgba(234,106,71,0.12);
+  --cream:       #F5EFE0;
+  --cream-dark:  #EDE4CC;
+  --white:       #FFFFFF;
+  --fog:         #8A8A8A;
+  --muted:       rgba(245,239,224,0.45);
+  --tag-green:   #5B8C5A;
+  --tag-amber:   #C97A56;
+  --tag-red:     #B85450;
+  --r:           12px;
+  --r-lg:        20px;
+}
+
+html { scroll-behavior: smooth; }
+body {
+  font-family: 'DM Sans', sans-serif;
+  font-weight: 400;
+  background: var(--coal);
+  color: var(--cream);
+  overflow-x: hidden;
+}
+
+/* ── Noise texture overlay ──────────────────────────────────── */
+body::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.04'/%3E%3C/svg%3E");
+  pointer-events: none;
+  z-index: 0;
+  opacity: 0.6;
+}
+
+/* ── Progress bar ───────────────────────────────────────────── */
+#progress {
+  position: fixed;
+  top: 0; left: 0;
+  height: 2px;
+  background: var(--coral);
+  width: 0%;
+  z-index: 999;
+  transition: width 0.1s linear;
+}
+
+/* ── Nav ────────────────────────────────────────────────────── */
+nav {
+  position: fixed;
+  top: 0; left: 0; right: 0;
+  z-index: 100;
+  padding: 20px 48px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  transition: background 0.4s, backdrop-filter 0.4s;
+}
+nav.scrolled {
+  background: rgba(17,17,24,0.88);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border-bottom: 1px solid rgba(245,239,224,0.06);
+}
+.nav-logo {
+  font-family: 'DM Sans', sans-serif;
+  font-weight: 600;
+  font-size: 15px;
+  letter-spacing: 3px;
+  color: var(--coral);
+}
+.nav-badge {
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--fog);
+  letter-spacing: 1.5px;
+}
+.nav-cta {
+  background: var(--coral);
+  color: var(--white);
+  font-family: 'DM Sans', sans-serif;
+  font-weight: 600;
+  font-size: 13px;
+  padding: 10px 22px;
+  border-radius: 40px;
+  text-decoration: none;
+  letter-spacing: 0.5px;
+  transition: background 0.2s, transform 0.2s;
+}
+.nav-cta:hover { background: var(--coral-light); transform: translateY(-1px); }
+
+/* ── Utility ────────────────────────────────────────────────── */
+.container { max-width: 1080px; margin: 0 auto; padding: 0 48px; }
+.section { position: relative; z-index: 1; }
+
+/* Scroll reveal */
+.reveal {
+  opacity: 0;
+  transform: translateY(28px);
+  transition: opacity 0.7s cubic-bezier(.22,.68,0,1.2), transform 0.7s cubic-bezier(.22,.68,0,1.2);
+}
+.reveal.visible { opacity: 1; transform: translateY(0); }
+.reveal-delay-1 { transition-delay: 0.1s; }
+.reveal-delay-2 { transition-delay: 0.2s; }
+.reveal-delay-3 { transition-delay: 0.3s; }
+.reveal-delay-4 { transition-delay: 0.4s; }
+.reveal-delay-5 { transition-delay: 0.5s; }
+
+/* Section label */
+.section-label {
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 3.5px;
+  color: var(--coral);
+  text-transform: uppercase;
+  margin-bottom: 16px;
+}
+
+/* Section heading */
+.section-heading {
+  font-family: 'Cormorant Garamond', serif;
+  font-size: clamp(32px, 4vw, 48px);
+  font-weight: 600;
+  line-height: 1.12;
+  color: var(--cream);
+}
+
+/* Coral accent rule */
+.rule {
+  width: 40px; height: 2px;
+  background: var(--coral);
+  margin: 24px 0;
+}
+
+/* ── HERO ───────────────────────────────────────────────────── */
+#hero {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  padding: 120px 48px 80px;
+  background: radial-gradient(ellipse 80% 60% at 50% 30%, rgba(234,106,71,0.08) 0%, transparent 70%);
+}
+
+.hero-eyebrow {
+  font-size: 11px;
+  letter-spacing: 4px;
+  color: var(--coral);
+  font-weight: 600;
+  text-transform: uppercase;
+  margin-bottom: 48px;
+  opacity: 0;
+  animation: fadeUp 0.8s ease-out 0.2s forwards;
+}
+.hero-quote {
+  font-family: 'Cormorant Garamond', serif;
+  font-size: clamp(36px, 5.5vw, 72px);
+  font-style: italic;
+  font-weight: 400;
+  line-height: 1.15;
+  color: var(--cream);
+  max-width: 780px;
+  opacity: 0;
+  animation: fadeUp 0.9s ease-out 0.4s forwards;
+}
+.hero-quote span { color: var(--coral); font-style: normal; font-weight: 600; }
+.hero-attr {
+  font-size: 14px;
+  font-weight: 400;
+  color: var(--fog);
+  margin-top: 20px;
+  letter-spacing: 0.5px;
+  opacity: 0;
+  animation: fadeUp 0.8s ease-out 0.6s forwards;
+}
+.hero-divider {
+  width: 1px;
+  height: 60px;
+  background: linear-gradient(to bottom, var(--coral), transparent);
+  margin: 40px auto;
+  opacity: 0;
+  animation: fadeUp 0.8s ease-out 0.8s forwards;
+}
+.hero-title {
+  font-family: 'Cormorant Garamond', serif;
+  font-size: clamp(18px, 2.5vw, 26px);
+  font-weight: 600;
+  color: var(--cream);
+  letter-spacing: 0.5px;
+  opacity: 0;
+  animation: fadeUp 0.8s ease-out 1s forwards;
+}
+.hero-sub {
+  font-size: 13px;
+  font-weight: 400;
+  color: var(--fog);
+  margin-top: 8px;
+  opacity: 0;
+  animation: fadeUp 0.8s ease-out 1.1s forwards;
+}
+.hero-meta {
+  display: flex;
+  gap: 32px;
+  justify-content: center;
+  margin-top: 48px;
+  opacity: 0;
+  animation: fadeUp 0.8s ease-out 1.3s forwards;
+}
+.hero-meta-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+}
+.hero-meta-value {
+  font-family: 'Cormorant Garamond', serif;
+  font-size: 28px;
+  font-weight: 600;
+  color: var(--coral);
+}
+.hero-meta-label {
+  font-size: 10px;
+  letter-spacing: 2.5px;
+  color: var(--fog);
+  text-transform: uppercase;
+}
+.hero-scroll {
+  position: absolute;
+  bottom: 40px;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  opacity: 0;
+  animation: fadeUp 1s ease-out 1.8s forwards;
+}
+.hero-scroll span { font-size: 10px; letter-spacing: 3px; color: var(--fog); }
+.scroll-line {
+  width: 1px; height: 32px;
+  background: linear-gradient(to bottom, var(--fog), transparent);
+  animation: scrollPulse 2s ease-in-out infinite;
+}
+@keyframes scrollPulse {
+  0%, 100% { opacity: 0.4; transform: scaleY(1); }
+  50% { opacity: 1; transform: scaleY(1.3); }
+}
+
+@keyframes fadeUp {
+  from { opacity: 0; transform: translateY(20px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+/* ── SITUATION ──────────────────────────────────────────────── */
+#situation {
+  background: var(--cream);
+  padding: 100px 0;
+}
+#situation .section-label { color: var(--coral); }
+#situation .section-heading { color: var(--charcoal); }
+.situation-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 2px;
+  margin-top: 48px;
+  border-radius: var(--r-lg);
+  overflow: hidden;
+}
+.situation-card {
+  background: var(--cream-dark);
+  padding: 36px 32px;
+  transition: background 0.3s;
+}
+.situation-card:hover { background: #E5D9C3; }
+.sit-icon {
+  width: 36px; height: 36px;
+  border-radius: 50%;
+  background: var(--coral-pale);
+  display: flex; align-items: center; justify-content: center;
+  margin-bottom: 20px;
+  font-size: 16px;
+}
+.sit-label {
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 3px;
+  color: var(--coral);
+  text-transform: uppercase;
+  margin-bottom: 12px;
+}
+.sit-body {
+  font-size: 15px;
+  line-height: 1.65;
+  color: var(--charcoal);
+}
+
+/* ── WHAT WE BUILD ──────────────────────────────────────────── */
+#build {
+  padding: 120px 0;
+  background: var(--coal);
+}
+.steps-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 20px;
+  margin-top: 56px;
+}
+.step-card {
+  background: rgba(245,239,224,0.04);
+  border: 1px solid rgba(245,239,224,0.08);
+  border-radius: var(--r-lg);
+  padding: 36px;
+  transition: background 0.3s, border-color 0.3s, transform 0.3s;
+  position: relative;
+  overflow: hidden;
+}
+.step-card::before {
+  content: '';
+  position: absolute;
+  top: 0; left: 0; right: 0;
+  height: 2px;
+  background: var(--coral);
+  transform: scaleX(0);
+  transform-origin: left;
+  transition: transform 0.4s cubic-bezier(.22,.68,0,1);
+}
+.step-card:hover { background: rgba(245,239,224,0.07); border-color: rgba(234,106,71,0.3); transform: translateY(-3px); }
+.step-card:hover::before { transform: scaleX(1); }
+.step-num {
+  font-family: 'Cormorant Garamond', serif;
+  font-size: 64px;
+  font-weight: 700;
+  color: rgba(234,106,71,0.15);
+  line-height: 1;
+  margin-bottom: 12px;
+  transition: color 0.3s;
+}
+.step-card:hover .step-num { color: rgba(234,106,71,0.3); }
+.step-title {
+  font-family: 'Cormorant Garamond', serif;
+  font-size: 22px;
+  font-weight: 600;
+  color: var(--cream);
+  margin-bottom: 12px;
+}
+.step-body { font-size: 14px; line-height: 1.7; color: var(--muted); }
+.step-tag {
+  display: inline-block;
+  margin-top: 20px;
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 2px;
+  color: var(--coral);
+  border: 1px solid rgba(234,106,71,0.35);
+  border-radius: 30px;
+  padding: 5px 14px;
+}
+
+/* Conditional badge */
+.conditional-badge {
+  display: inline-block;
+  margin-top: 20px;
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 2px;
+  color: #C97A56;
+  border: 1px solid rgba(201,122,86,0.35);
+  border-radius: 30px;
+  padding: 5px 14px;
+}
+
+/* ── TECHNOLOGY ─────────────────────────────────────────────── */
+#tech {
+  background: var(--cream);
+  padding: 100px 0;
+}
+#tech .section-label { color: var(--coral); }
+#tech .section-heading { color: var(--charcoal); }
+.tech-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 3px;
+  margin-top: 48px;
+  border-radius: var(--r-lg);
+  overflow: hidden;
+}
+.tech-col {
+  padding: 40px;
+}
+.tech-col.before { background: #E8DFC9; }
+.tech-col.after  { background: var(--charcoal); }
+.tech-col-label {
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 3px;
+  text-transform: uppercase;
+  margin-bottom: 24px;
+}
+.tech-col.before .tech-col-label { color: var(--fog); }
+.tech-col.after  .tech-col-label { color: var(--coral); }
+.tech-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 14px;
+  padding: 12px 0;
+  border-bottom: 1px solid rgba(0,0,0,0.07);
+  font-size: 14px;
+  line-height: 1.5;
+}
+.tech-col.after .tech-item { border-bottom-color: rgba(255,255,255,0.06); }
+.tech-col.before .tech-item { color: var(--charcoal); }
+.tech-col.after .tech-item  { color: rgba(245,239,224,0.75); }
+.tech-dot {
+  width: 7px; height: 7px;
+  border-radius: 50%;
+  margin-top: 4px;
+  flex-shrink: 0;
+}
+.tech-col.before .tech-dot { background: #AAAAAA; }
+.tech-col.after .tech-dot  { background: var(--coral); }
+
+/* ── TIMELINE ───────────────────────────────────────────────── */
+#timeline {
+  background: var(--coal);
+  padding: 120px 0;
+}
+.timeline-track {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 3px;
+  margin-top: 56px;
+  border-radius: var(--r-lg);
+  overflow: hidden;
+}
+.tl-phase { padding: 40px 36px; }
+.tl-phase.p1 { background: rgba(245,239,224,0.05); }
+.tl-phase.p2 { background: rgba(234,106,71,0.12); border-top: 2px solid var(--coral); }
+.tl-phase.p3 { background: rgba(245,239,224,0.03); }
+.tl-phase-label {
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 3px;
+  text-transform: uppercase;
+  margin-bottom: 6px;
+}
+.tl-phase.p1 .tl-phase-label { color: var(--fog); }
+.tl-phase.p2 .tl-phase-label { color: var(--coral); }
+.tl-phase.p3 .tl-phase-label { color: rgba(245,239,224,0.3); }
+.tl-phase-title {
+  font-family: 'Cormorant Garamond', serif;
+  font-size: 26px;
+  font-weight: 600;
+  color: var(--cream);
+  margin-bottom: 28px;
+  padding-bottom: 20px;
+  border-bottom: 1px solid rgba(245,239,224,0.08);
+}
+.tl-phase.p2 .tl-phase-title { color: var(--coral-light); }
+.tl-phase.p3 .tl-phase-title { color: rgba(245,239,224,0.4); }
+.tl-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  margin-bottom: 14px;
+  font-size: 13.5px;
+  line-height: 1.55;
+  color: var(--muted);
+}
+.tl-phase.p2 .tl-item { color: rgba(245,239,224,0.8); }
+.tl-dot { width: 5px; height: 5px; border-radius: 50%; background: var(--coral); margin-top: 7px; flex-shrink: 0; }
+.tl-section-label {
+  font-size: 10px;
+  letter-spacing: 2px;
+  font-weight: 600;
+  color: var(--coral);
+  text-transform: uppercase;
+  margin: 20px 0 10px;
+}
+
+/* ── MILESTONES ─────────────────────────────────────────────── */
+#milestones {
+  background: var(--cream);
+  padding: 100px 0;
+}
+#milestones .section-label { color: var(--coral); }
+#milestones .section-heading { color: var(--charcoal); }
+.milestone-table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-top: 48px;
+  border-radius: var(--r);
+  overflow: hidden;
+}
+.milestone-table th {
+  background: var(--charcoal);
+  color: var(--cream);
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 2.5px;
+  text-transform: uppercase;
+  padding: 16px 20px;
+  text-align: left;
+}
+.milestone-table td {
+  padding: 18px 20px;
+  font-size: 14px;
+  color: var(--charcoal);
+  vertical-align: top;
+  line-height: 1.55;
+}
+.milestone-table tr:nth-child(even) td { background: #EDE4CC; }
+.milestone-table tr:nth-child(odd) td  { background: var(--cream-dark); }
+.milestone-table tr:last-child td { background: rgba(234,106,71,0.08); }
+.m-label { font-weight: 600; color: var(--charcoal); display: block; margin-bottom: 3px; }
+.m-sub { color: var(--fog); font-size: 12px; }
+.m-owner {
+  display: inline-block;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 1px;
+  border-radius: 20px;
+  padding: 4px 12px;
+  background: rgba(234,106,71,0.12);
+  color: var(--coral-dark);
+}
+.m-owner.both { background: rgba(91,140,90,0.12); color: var(--tag-green); }
+
+/* ── INVESTMENT ─────────────────────────────────────────────── */
+#investment {
+  background: var(--coal);
+  padding: 120px 0;
+}
+.investment-inner {
+  background: rgba(245,239,224,0.04);
+  border: 1px solid rgba(245,239,224,0.08);
+  border-radius: var(--r-lg);
+  overflow: hidden;
+}
+.investment-header {
+  background: rgba(234,106,71,0.1);
+  padding: 32px 40px;
+  border-bottom: 1px solid rgba(234,106,71,0.2);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 16px;
+}
+.inv-header-title {
+  font-family: 'Cormorant Garamond', serif;
+  font-size: 22px;
+  font-weight: 600;
+  color: var(--cream);
+}
+.toggle-wrap {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  font-size: 13px;
+  color: var(--muted);
+}
+.toggle {
+  position: relative;
+  width: 44px; height: 24px;
+  cursor: pointer;
+}
+.toggle input { display: none; }
+.toggle-track {
+  position: absolute;
+  inset: 0;
+  background: rgba(245,239,224,0.12);
+  border-radius: 12px;
+  transition: background 0.3s;
+}
+.toggle input:checked ~ .toggle-track { background: var(--coral); }
+.toggle-thumb {
+  position: absolute;
+  top: 3px; left: 3px;
+  width: 18px; height: 18px;
+  background: var(--white);
+  border-radius: 50%;
+  transition: transform 0.3s cubic-bezier(.22,.68,0,1.2);
+}
+.toggle input:checked ~ .toggle-thumb { transform: translateX(20px); }
+.toggle-label-text { font-weight: 500; color: var(--cream); }
+.inv-rows { padding: 0 40px; }
+.inv-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 18px 0;
+  border-bottom: 1px solid rgba(245,239,224,0.06);
+  font-size: 14px;
+}
+.inv-row:last-of-type { border-bottom: none; }
+.inv-activity { color: rgba(245,239,224,0.75); }
+.inv-activity.conditional-row { color: rgba(201,122,86,0.8); font-style: italic; }
+.inv-meta { font-size: 12px; color: var(--fog); margin-top: 2px; }
+.inv-cost { font-weight: 600; color: var(--cream); font-size: 15px; }
+.inv-cost.conditional-val { color: #C97A56; }
+.inv-subtotal {
+  padding: 20px 40px;
+  background: rgba(245,239,224,0.03);
+  border-top: 1px solid rgba(245,239,224,0.08);
+  display: flex;
+  justify-content: space-between;
+  font-size: 14px;
+  color: var(--fog);
+}
+.inv-subtotal span:last-child { color: var(--cream); font-weight: 600; }
+.inv-total {
+  background: var(--coral);
+  padding: 24px 40px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+.inv-total-label {
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 3px;
+  color: rgba(255,255,255,0.7);
+  text-transform: uppercase;
+}
+.inv-total-value {
+  font-family: 'Cormorant Garamond', serif;
+  font-size: 42px;
+  font-weight: 700;
+  color: var(--white);
+  transition: all 0.4s cubic-bezier(.22,.68,0,1.2);
+}
+.payment-note {
+  padding: 20px 40px;
+  font-size: 13px;
+  color: var(--fog);
+  line-height: 1.6;
+  border-top: 1px solid rgba(245,239,224,0.06);
+}
+.payment-note strong { color: var(--cream); }
+
+/* ── NEED FROM YOU ──────────────────────────────────────────── */
+#needs {
+  background: var(--cream);
+  padding: 100px 0;
+}
+#needs .section-label { color: var(--coral); }
+#needs .section-heading { color: var(--charcoal); }
+.needs-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+  margin-top: 48px;
+}
+.need-item {
+  background: var(--cream-dark);
+  border-radius: var(--r);
+  padding: 28px;
+  display: flex;
+  gap: 20px;
+  align-items: flex-start;
+  transition: background 0.3s;
+}
+.need-item:hover { background: #E5D9C3; }
+.need-num {
+  font-family: 'Cormorant Garamond', serif;
+  font-size: 36px;
+  font-weight: 700;
+  color: var(--coral);
+  line-height: 1;
+  flex-shrink: 0;
+  margin-top: -4px;
+}
+.need-title { font-weight: 600; font-size: 15px; color: var(--charcoal); margin-bottom: 6px; }
+.need-body { font-size: 13.5px; line-height: 1.6; color: #666; }
+
+/* ── NEXT STEPS ─────────────────────────────────────────────── */
+#nextsteps {
+  background: var(--coal);
+  padding: 120px 0;
+}
+.steps-list {
+  margin-top: 56px;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+.ns-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 32px;
+  padding: 28px 36px;
+  background: rgba(245,239,224,0.04);
+  border-radius: var(--r);
+  transition: background 0.3s;
+}
+.ns-item:hover { background: rgba(245,239,224,0.07); }
+.ns-n {
+  font-family: 'Cormorant Garamond', serif;
+  font-size: 48px;
+  font-weight: 700;
+  color: rgba(234,106,71,0.25);
+  line-height: 1;
+  flex-shrink: 0;
+  width: 48px;
+  text-align: center;
+  transition: color 0.3s;
+}
+.ns-item:hover .ns-n { color: rgba(234,106,71,0.55); }
+.ns-text { padding-top: 10px; font-size: 16px; line-height: 1.6; color: var(--muted); }
+.ns-text strong { color: var(--cream); }
+
+/* ── CTA ────────────────────────────────────────────────────── */
+#cta {
+  background: var(--charcoal);
+  padding: 120px 48px;
+  text-align: center;
+  position: relative;
+  overflow: hidden;
+}
+#cta::before {
+  content: '';
+  position: absolute;
+  top: -200px; left: 50%;
+  transform: translateX(-50%);
+  width: 600px; height: 600px;
+  background: radial-gradient(circle, rgba(234,106,71,0.12), transparent 70%);
+  pointer-events: none;
+}
+.cta-heading {
+  font-family: 'Cormorant Garamond', serif;
+  font-size: clamp(40px, 6vw, 72px);
+  font-weight: 400;
+  font-style: italic;
+  color: var(--cream);
+  max-width: 640px;
+  margin: 0 auto 12px;
+}
+.cta-heading em { font-style: normal; color: var(--coral); font-weight: 600; }
+.cta-sub {
+  font-size: 15px;
+  color: var(--fog);
+  margin-bottom: 48px;
+}
+.cta-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 12px;
+  background: var(--coral);
+  color: var(--white);
+  font-family: 'DM Sans', sans-serif;
+  font-weight: 600;
+  font-size: 16px;
+  letter-spacing: 0.5px;
+  padding: 18px 48px;
+  border-radius: 60px;
+  text-decoration: none;
+  transition: transform 0.25s cubic-bezier(.22,.68,0,1.2), box-shadow 0.25s;
+  box-shadow: 0 4px 32px rgba(234,106,71,0.25);
+}
+.cta-btn:hover {
+  transform: translateY(-3px) scale(1.02);
+  box-shadow: 0 8px 48px rgba(234,106,71,0.4);
+}
+.cta-btn svg { transition: transform 0.2s; }
+.cta-btn:hover svg { transform: translateX(4px); }
+.cta-note {
+  margin-top: 24px;
+  font-size: 12px;
+  color: var(--fog);
+}
+
+/* ── FOOTER ─────────────────────────────────────────────────── */
+footer {
+  background: var(--coal);
+  border-top: 1px solid rgba(245,239,224,0.06);
+  padding: 40px 48px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 12px;
+  color: var(--fog);
+  position: relative;
+  z-index: 1;
+}
+footer .f-logo { color: var(--coral); font-weight: 600; letter-spacing: 2px; }
+
+/* ── Mobile ─────────────────────────────────────────────────── */
+@media (max-width: 760px) {
+  .container { padding: 0 24px; }
+  nav { padding: 16px 24px; }
+  .nav-badge, .nav-cta { display: none; }
+  .steps-grid, .tech-grid, .timeline-track, .needs-grid { grid-template-columns: 1fr; }
+  .situation-grid { grid-template-columns: 1fr; }
+  .investment-header { flex-direction: column; }
+  footer { flex-direction: column; gap: 12px; text-align: center; }
+}
+</style>
+</head>
+<body>
+
+<div id="progress"></div>
+
+<!-- ── NAV ──────────────────────────────────────────────────────────────── -->
+<nav id="navbar">
+  <span class="nav-logo">SOCH</span>
+  <span class="nav-badge">ANTHROPIC PARTNER NETWORK</span>
+  <a href="#cta" class="nav-cta">Reply Yes →</a>
+</nav>
+
+<!-- ── HERO ─────────────────────────────────────────────────────────────── -->
+<section id="hero" class="section">
+  <p class="hero-eyebrow">AI Automation Pilot Proposal · Lexy × Soch</p>
+  <blockquote class="hero-quote">
+    "Claude is definitely my <span>favourite employee.</span>"
+  </blockquote>
+  <p class="hero-attr">— Layth Fahoum, Founder, Lexy</p>
+  <div class="hero-divider"></div>
+  <p class="hero-title">Phase 1: Summer GTM Engine + School Outreach Pipeline</p>
+  <p class="hero-sub">Prepared by Riz · Soch · May 2025</p>
+  <div class="hero-meta">
+    <div class="hero-meta-item">
+      <span class="hero-meta-value">29</span>
+      <span class="hero-meta-label">Hours</span>
+    </div>
+    <div class="hero-meta-item">
+      <span class="hero-meta-value">$60</span>
+      <span class="hero-meta-label">Blended Rate</span>
+    </div>
+    <div class="hero-meta-item">
+      <span class="hero-meta-value">4</span>
+      <span class="hero-meta-label">Deliverables</span>
+    </div>
+    <div class="hero-meta-item">
+      <span class="hero-meta-value">3wk</span>
+      <span class="hero-meta-label">To M3</span>
+    </div>
+  </div>
+  <div class="hero-scroll">
+    <span>SCROLL</span>
+    <div class="scroll-line"></div>
+  </div>
+</section>
+
+<!-- ── SITUATION ─────────────────────────────────────────────────────────── -->
+<section id="situation" class="section">
+  <div class="container">
+    <p class="section-label reveal">The Context</p>
+    <h2 class="section-heading reveal reveal-delay-1">Here's what I understood<br>from our conversation.</h2>
+    <div class="situation-grid">
+      <div class="situation-card reveal reveal-delay-2">
+        <div class="sit-icon">🎯</div>
+        <p class="sit-label">Starting Point</p>
+        <p class="sit-body">No CRM. No automation. No marketing system. A live screening platform used by 3 schools — and a summer window opening in June that's the biggest B2C opportunity of the year.</p>
+      </div>
+      <div class="situation-card reveal reveal-delay-3">
+        <div class="sit-icon">⏱</div>
+        <p class="sit-label">The Constraint</p>
+        <p class="sit-body">Schools are closed June through August — so school outreach waits for August. But parents are active all summer. And 120 UAE schools need to be ready for September. Both windows are fixed.</p>
+      </div>
+      <div class="situation-card reveal reveal-delay-4">
+        <div class="sit-icon">→</div>
+        <p class="sit-label">The Approach</p>
+        <p class="sit-body">Parent-facing systems first. School pipeline second. Product AI third. Each phase unlocks the next — and nothing sends or publishes without your approval.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ── WHAT WE BUILD ──────────────────────────────────────────────────────── -->
+<section id="build" class="section">
+  <div class="container">
+    <p class="section-label reveal">What We're Building</p>
+    <h2 class="section-heading reveal reveal-delay-1">Four deliverables.<br>One summer window.</h2>
+    <div class="steps-grid">
+
+      <div class="step-card reveal reveal-delay-2">
+        <div class="step-num">01</div>
+        <h3 class="step-title">HubSpot CRM + School Pipeline</h3>
+        <p class="step-body">HubSpot free tier configured as the CRM. All 120+ UAE schools loaded from your existing pipeline data. Deal stages, contact records, subscription tracking, and follow-up triggers — so the pipeline manages itself between your check-ins.</p>
+        <span class="step-tag">ACTIVE · AUGUST</span>
+      </div>
+
+      <div class="step-card reveal reveal-delay-3">
+        <div class="step-num">02</div>
+        <h3 class="step-title">School Outreach Email Sequences</h3>
+        <p class="step-body">Three sequences built in HubSpot: principal, inclusion lead, general admin. Claude drafts personalised emails for each school. You review batches before anything sends. Response status auto-logs and triggers the next step.</p>
+        <span class="step-tag">ACTIVE · AUGUST</span>
+      </div>
+
+      <div class="step-card reveal reveal-delay-4">
+        <div class="step-num">03</div>
+        <h3 class="step-title">Instagram Content Engine</h3>
+        <p class="step-body">Weekly content signals go in, Claude generates caption, hook, hashtag set, and visual brief for five posts. Output lands in your review queue. You approve and post manually. Copy only — image creation is not included. No auto-publishing.</p>
+        <span class="step-tag">ACTIVE · JUNE</span>
+      </div>
+
+      <div class="step-card reveal reveal-delay-5">
+        <div class="step-num">04</div>
+        <h3 class="step-title">Post-Screening Report Generator</h3>
+        <p class="step-body">When a screener is completed, Claude reads the result from Firebase and generates a plain-language parent report and a teacher summary. Both produced as downloadable documents the same day — no formatting, no 12 pages.</p>
+        <span class="conditional-badge">CONDITIONAL · FIREBASE ACCESS</span>
+      </div>
+
+    </div>
+  </div>
+</section>
+
+<!-- ── TECHNOLOGY ─────────────────────────────────────────────────────────── -->
+<section id="tech" class="section">
+  <div class="container">
+    <p class="section-label reveal">Technology</p>
+    <h2 class="section-heading reveal reveal-delay-1">Before and after.</h2>
+    <div class="tech-grid">
+      <div class="tech-col before reveal reveal-delay-2">
+        <p class="tech-col-label">Right now</p>
+        <div class="tech-item"><span class="tech-dot"></span><span>Firebase + Google Workspace — backend and data</span></div>
+        <div class="tech-item"><span class="tech-dot"></span><span>Claude Code — used by Layth for prototyping</span></div>
+        <div class="tech-item"><span class="tech-dot"></span><span>ChatGPT — integrated into screener reasoning</span></div>
+        <div class="tech-item"><span class="tech-dot"></span><span>Excel / spreadsheets — school pipeline and data</span></div>
+        <div class="tech-item"><span class="tech-dot"></span><span>No CRM, no automation, no marketing system</span></div>
+      </div>
+      <div class="tech-col after reveal reveal-delay-3">
+        <p class="tech-col-label">After Pilot</p>
+        <div class="tech-item"><span class="tech-dot"></span><span>HubSpot (free tier) — CRM, pipeline, outreach sequences</span></div>
+        <div class="tech-item"><span class="tech-dot"></span><span>n8n — automation backbone connecting all workflows</span></div>
+        <div class="tech-item"><span class="tech-dot"></span><span>Claude API (Anthropic) — content, emails, reports</span></div>
+        <div class="tech-item"><span class="tech-dot"></span><span>Firebase read connection — feeds report generator</span></div>
+        <div class="tech-item"><span class="tech-dot"></span><span>Content review queue — Notion or Airtable, your preference</span></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ── TIMELINE ───────────────────────────────────────────────────────────── -->
+<section id="timeline" class="section">
+  <div class="container">
+    <p class="section-label reveal">60-Day Roadmap</p>
+    <h2 class="section-heading reveal reveal-delay-1">What happens and when.</h2>
+    <div class="timeline-track">
+      <div class="tl-phase p1 reveal reveal-delay-2">
+        <p class="tl-phase-label">Month 1</p>
+        <h3 class="tl-phase-title">Foundation</h3>
+        <p class="tl-section-label">CRM & Pipeline</p>
+        <div class="tl-item"><span class="tl-dot"></span>HubSpot configured and live</div>
+        <div class="tl-item"><span class="tl-dot"></span>120 UAE schools loaded into pipeline</div>
+        <div class="tl-item"><span class="tl-dot"></span>Lead stages and follow-up triggers active</div>
+        <p class="tl-section-label">Content Engine</p>
+        <div class="tl-item"><span class="tl-dot"></span>Instagram content system running</div>
+        <div class="tl-item"><span class="tl-dot"></span>First 5 post packages in review queue</div>
+        <div class="tl-item"><span class="tl-dot"></span>You review, approve, and post</div>
+      </div>
+      <div class="tl-phase p2 reveal reveal-delay-3">
+        <p class="tl-phase-label">Month 2</p>
+        <h3 class="tl-phase-title">Build</h3>
+        <p class="tl-section-label">School Outreach</p>
+        <div class="tl-item"><span class="tl-dot"></span>Full 120-school sequence running</div>
+        <div class="tl-item"><span class="tl-dot"></span>Follow-ups automated by response status</div>
+        <div class="tl-item"><span class="tl-dot"></span>Meeting booked flow configured</div>
+        <p class="tl-section-label">Report Generator</p>
+        <div class="tl-item"><span class="tl-dot"></span>Firebase read access connected</div>
+        <div class="tl-item"><span class="tl-dot"></span>Parent report auto-generated on completion</div>
+        <div class="tl-item"><span class="tl-dot"></span>Teacher version with class-level patterns</div>
+      </div>
+      <div class="tl-phase p3 reveal reveal-delay-4">
+        <p class="tl-phase-label">Beyond</p>
+        <h3 class="tl-phase-title">Scale</h3>
+        <p class="tl-section-label">Screener AI</p>
+        <div class="tl-item"><span class="tl-dot"></span>Conversational layer on screener questions</div>
+        <div class="tl-item"><span class="tl-dot"></span>Token cost model designed before build</div>
+        <p class="tl-section-label">Lexi AI Assistant</p>
+        <div class="tl-item"><span class="tl-dot"></span>In-platform teacher recommendations</div>
+        <div class="tl-item"><span class="tl-dot"></span>Class-level pattern detection</div>
+        <p class="tl-section-label">Worksheet Tool</p>
+        <div class="tl-item"><span class="tl-dot"></span>Upload any worksheet → Claude adapts it</div>
+        <div class="tl-item"><span class="tl-dot"></span>Dyslexia-friendly fonts, B/D highlights</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ── MILESTONES ─────────────────────────────────────────────────────────── -->
+<section id="milestones" class="section">
+  <div class="container">
+    <p class="section-label reveal">Milestones</p>
+    <h2 class="section-heading reveal reveal-delay-1">How we track progress.</h2>
+    <table class="milestone-table reveal reveal-delay-2">
+      <thead>
+        <tr>
+          <th style="width:18%">Milestone</th>
+          <th style="width:28%">Deliverable</th>
+          <th style="width:36%">Success Criteria</th>
+          <th style="width:18%">Owner</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><span class="m-label">M1 — Design</span><span class="m-sub">Week 1</span></td>
+          <td>HubSpot structure, sequence logic, content system confirmed</td>
+          <td>Layth confirms all workflow logic before any build begins</td>
+          <td><span class="m-owner">Soch</span></td>
+        </tr>
+        <tr>
+          <td><span class="m-label">M2 — CRM Live</span><span class="m-sub">Week 2</span></td>
+          <td>HubSpot configured, 120+ schools loaded, deal stages active</td>
+          <td>Layth opens HubSpot and sees the full school pipeline on day one</td>
+          <td><span class="m-owner">Soch</span></td>
+        </tr>
+        <tr>
+          <td><span class="m-label">M3 — Outreach + Content</span><span class="m-sub">Week 3</span></td>
+          <td>First school batch in review queue; first 5 content sets generated</td>
+          <td>Layth can approve and send within 30 minutes; content queue running</td>
+          <td><span class="m-owner both">Soch + Layth</span></td>
+        </tr>
+        <tr>
+          <td><span class="m-label">M4 — Report Generator</span><span class="m-sub">Conditional</span></td>
+          <td>First post-screening report generated from real screener data</td>
+          <td>Parent and teacher versions reviewed and confirmed ready to share</td>
+          <td><span class="m-owner both">Soch + Layth</span></td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<!-- ── INVESTMENT ─────────────────────────────────────────────────────────── -->
+<section id="investment" class="section">
+  <div class="container">
+    <p class="section-label reveal">Investment</p>
+    <h2 class="section-heading reveal reveal-delay-1">What this costs.</h2>
+    <div class="investment-inner reveal reveal-delay-2">
+      <div class="investment-header">
+        <p class="inv-header-title">Blended rate: $60/hr</p>
+        <label class="toggle-wrap">
+          <span>Include report generator</span>
+          <label class="toggle">
+            <input type="checkbox" id="reportToggle" checked>
+            <span class="toggle-track"></span>
+            <span class="toggle-thumb"></span>
+          </label>
+          <span class="toggle-label-text" id="toggleLabel">Included</span>
+        </label>
+      </div>
+
+      <div class="inv-rows">
+        <div class="inv-row">
+          <div><div class="inv-activity">HubSpot CRM design, setup & configuration</div><div class="inv-meta">5 hrs × $60/hr</div></div>
+          <div class="inv-cost">$300</div>
+        </div>
+        <div class="inv-row">
+          <div><div class="inv-activity">School pipeline loaded (120 UAE schools)</div><div class="inv-meta">3 hrs × $60/hr</div></div>
+          <div class="inv-cost">$180</div>
+        </div>
+        <div class="inv-row">
+          <div><div class="inv-activity">School outreach sequences (3 types, tracker)</div><div class="inv-meta">4 hrs × $60/hr</div></div>
+          <div class="inv-cost">$240</div>
+        </div>
+        <div class="inv-row">
+          <div><div class="inv-activity">Instagram content engine — copy only</div><div class="inv-meta">4 hrs × $60/hr</div></div>
+          <div class="inv-cost">$240</div>
+        </div>
+        <div class="inv-row">
+          <div><div class="inv-activity">Workflow design & scope mapping</div><div class="inv-meta">3 hrs × $60/hr</div></div>
+          <div class="inv-cost">$180</div>
+        </div>
+        <div class="inv-row">
+          <div><div class="inv-activity">Testing, iteration & QA</div><div class="inv-meta">4 hrs × $60/hr</div></div>
+          <div class="inv-cost">$240</div>
+        </div>
+        <div class="inv-row">
+          <div><div class="inv-activity">Client handover & documentation</div><div class="inv-meta">3 hrs × $60/hr</div></div>
+          <div class="inv-cost">$180</div>
+        </div>
+        <div class="inv-row" id="reportRow">
+          <div><div class="inv-activity conditional-row">Report generator — conditional on Firebase access</div><div class="inv-meta">3 hrs × $60/hr · removed if Firebase not confirmed by M1</div></div>
+          <div class="inv-cost conditional-val" id="reportCost">$180</div>
+        </div>
+      </div>
+
+      <div class="inv-subtotal">
+        <span>Subtotal</span>
+        <span id="subtotalVal">$1,740</span>
+      </div>
+      <div class="inv-subtotal" style="border-top:none; padding-top:0;">
+        <span>Project overhead — prompt iteration, scope buffer, API costs</span>
+        <span id="overheadVal">$435</span>
+      </div>
+      <div class="inv-total">
+        <span class="inv-total-label">Phase 1 Total</span>
+        <span class="inv-total-value" id="totalVal">$2,175</span>
+      </div>
+      <div class="payment-note" id="paymentNote">
+        <strong>50% ($1,090) on contract signing.</strong> 50% ($1,085) on M3 — outreach sequences and content engine live. If Firebase access is not confirmed before M1, report generator is removed and total adjusts to $1,995.
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ── WHAT WE NEED ───────────────────────────────────────────────────────── -->
+<section id="needs" class="section">
+  <div class="container">
+    <p class="section-label reveal">What We Need From You</p>
+    <h2 class="section-heading reveal reveal-delay-1">Five things to get started.</h2>
+    <div class="needs-grid">
+      <div class="need-item reveal reveal-delay-2">
+        <span class="need-num">1</span>
+        <div>
+          <p class="need-title">School pipeline data</p>
+          <p class="need-body">The list of 120+ UAE schools in whatever format it currently exists — spreadsheet, Google Sheet, or export. Needed before M2.</p>
+        </div>
+      </div>
+      <div class="need-item reveal reveal-delay-3">
+        <span class="need-num">2</span>
+        <div>
+          <p class="need-title">Firebase read access</p>
+          <p class="need-body">A read-only API connection from your developer. Needed before M4. If unavailable, M4 defers with no impact on M1–M3.</p>
+        </div>
+      </div>
+      <div class="need-item reveal reveal-delay-4">
+        <span class="need-num">3</span>
+        <div>
+          <p class="need-title">HubSpot confirmation</p>
+          <p class="need-body">Confirm you're happy to use HubSpot free tier as the CRM. If you have a preference, let's discuss before M1.</p>
+        </div>
+      </div>
+      <div class="need-item reveal reveal-delay-5">
+        <span class="need-num">4</span>
+        <div>
+          <p class="need-title">Instagram account handle</p>
+          <p class="need-body">Plus three examples of content you like — from any brand, not necessarily edtech. Calibrates the content engine from day one.</p>
+        </div>
+      </div>
+      <div class="need-item reveal reveal-delay-2" style="grid-column:span 2">
+        <span class="need-num">5</span>
+        <div>
+          <p class="need-title">Your time at M1</p>
+          <p class="need-body">Approximately 60 minutes for workflow sign-off. Async Loom review is fine — you don't need to be in a live call for this.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ── NEXT STEPS ─────────────────────────────────────────────────────────── -->
+<section id="nextsteps" class="section">
+  <div class="container">
+    <p class="section-label reveal">Next Steps</p>
+    <h2 class="section-heading reveal reveal-delay-1">In order.</h2>
+    <div class="steps-list">
+      <div class="ns-item reveal reveal-delay-2">
+        <span class="ns-n">1</span>
+        <p class="ns-text"><strong>Confirm HubSpot is acceptable</strong> as the CRM — one reply is enough.</p>
+      </div>
+      <div class="ns-item reveal reveal-delay-3">
+        <span class="ns-n">2</span>
+        <p class="ns-text"><strong>Confirm Firebase access status</strong> with your developer — yes or no, so I know whether M4 is in scope now or later.</p>
+      </div>
+      <div class="ns-item reveal reveal-delay-4">
+        <span class="ns-n">3</span>
+        <p class="ns-text"><strong>Reply yes to this proposal.</strong> One word. I'll send a one-page agreement and invoice the same day.</p>
+      </div>
+      <div class="ns-item reveal reveal-delay-5">
+        <span class="ns-n">4</span>
+        <p class="ns-text"><strong>Share your school pipeline data,</strong> Instagram handle, and three content examples. We start building immediately.</p>
+      </div>
+      <div class="ns-item reveal">
+        <span class="ns-n">5</span>
+        <p class="ns-text"><strong>M1 workflow design delivered</strong> within 3 business days of contract signing. M2 and M3 within 3 weeks of M1 sign-off.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ── CTA ───────────────────────────────────────────────────────────────── -->
+<section id="cta" class="section">
+  <h2 class="cta-heading reveal">Ready to <em>start?</em></h2>
+  <p class="cta-sub reveal reveal-delay-1">One word is all it takes. Reply yes and the agreement goes out today.</p>
+  <a class="cta-btn reveal reveal-delay-2"
+     href="mailto:riz@withsoch.com?subject=Re%3A%20Lexy%20Proposal%20%E2%80%94%20Yes&body=Riz%2C%0A%0AYes%2C%20let%E2%80%99s%20start.%0A%0ALayth">
+    Reply Yes
+    <svg width="18" height="18" viewBox="0 0 18 18" fill="none">
+      <path d="M3 9h12M10 5l5 4-5 4" stroke="white" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+    </svg>
+  </a>
+  <p class="cta-note reveal reveal-delay-3">This opens your email client pre-filled. One click, one decision.</p>
+</section>
+
+<!-- ── FOOTER ─────────────────────────────────────────────────────────────── -->
+<footer>
+  <span class="f-logo">SOCH</span>
+  <span>riz@withsoch.com · withsoch.com · Anthropic Partner Network</span>
+  <span>Prepared May 2025</span>
+</footer>
+
+<script>
+// ── Progress bar
+const progress = document.getElementById('progress');
+window.addEventListener('scroll', () => {
+  const scrolled = (window.scrollY / (document.body.scrollHeight - window.innerHeight)) * 100;
+  progress.style.width = scrolled + '%';
+});
+
+// ── Sticky nav
+const navbar = document.getElementById('navbar');
+window.addEventListener('scroll', () => {
+  navbar.classList.toggle('scrolled', window.scrollY > 60);
+});
+
+// ── Scroll reveal
+const observer = new IntersectionObserver((entries) => {
+  entries.forEach(entry => {
+    if (entry.isIntersecting) {
+      entry.target.classList.add('visible');
+    }
+  });
+}, { threshold: 0.12 });
+document.querySelectorAll('.reveal').forEach(el => observer.observe(el));
+
+// ── Investment toggle
+const toggle = document.getElementById('reportToggle');
+const reportRow = document.getElementById('reportRow');
+const reportCost = document.getElementById('reportCost');
+const subtotalVal = document.getElementById('subtotalVal');
+const overheadVal = document.getElementById('overheadVal');
+const totalVal = document.getElementById('totalVal');
+const toggleLabel = document.getElementById('toggleLabel');
+const paymentNote = document.getElementById('paymentNote');
+
+function animateNum(el, from, to, prefix='$', duration=400) {
+  const start = performance.now();
+  const update = (time) => {
+    const p = Math.min((time - start) / duration, 1);
+    const ease = p < 0.5 ? 2*p*p : -1+(4-2*p)*p;
+    el.textContent = prefix + Math.round(from + (to - from) * ease).toLocaleString();
+    if (p < 1) requestAnimationFrame(update);
+  };
+  requestAnimationFrame(update);
+}
+
+toggle.addEventListener('change', () => {
+  const included = toggle.checked;
+  toggleLabel.textContent = included ? 'Included' : 'Excluded';
+
+  if (included) {
+    reportRow.style.opacity = '1';
+    reportCost.textContent = '$180';
+    animateNum(subtotalVal, 1560, 1740);
+    animateNum(overheadVal, 375, 435);
+    animateNum(totalVal, 1995, 2175);
+    paymentNote.innerHTML = '<strong>50% ($1,090) on contract signing.</strong> 50% ($1,085) on M3 — outreach sequences and content engine live. If Firebase access is not confirmed before M1, report generator is removed and total adjusts to $1,995.';
+  } else {
+    reportRow.style.opacity = '0.35';
+    reportCost.textContent = '—';
+    animateNum(subtotalVal, 1740, 1560);
+    animateNum(overheadVal, 435, 375);
+    animateNum(totalVal, 2175, 1995);
+    paymentNote.innerHTML = '<strong>50% ($1,000) on contract signing.</strong> 50% ($995) on M3 — outreach sequences and content engine live. Report generator not included; available as a Phase 2 add-on once Firebase access is confirmed.';
+  }
+});
+</script>
+</body>
+</html>
